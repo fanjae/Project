@@ -5,7 +5,7 @@
 
 #define BUF_SIZE 1024
 #define TEST_MODE 1
-#define TEST_IP 127.0.0.1
+#define TEST_IP "183.101.168.117"
 #define TEST_PORT 5050
 
 #pragma warning (disable:4996)
@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 	servAdr.sin_family = AF_INET;
 	if (TEST_MODE == 1)
 	{
-		servAdr.sin_addr.s_addr = inet_addr("127.0.0.1");
+		servAdr.sin_addr.s_addr = inet_addr(TEST_IP);
 		servAdr.sin_port = htons(atoi("5050"));
 	}
 

@@ -97,11 +97,11 @@ int main(int argc, char *argv[])
 		{
 			clnt_Message[strLen-1] = 0;
 			printf("Message From Clinet : %s\n", clnt_Message);
+
+			strcpy(clnt_Message, "유철이 감사하다!");
+			strLen = strlen(clnt_Message);
 			send(hClntSock, clnt_Message, strLen, 0);
 		}
-
-
-
 	}
 
 }
