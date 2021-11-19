@@ -2,21 +2,28 @@
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
+#include <vector>
 #include <process.h>
 
 #pragma warning (disable:4996)
 #pragma comment (lib,"ws2_32.lib")
 
 #define ROOM_SIZE 5
+#define ROOM_MAX_CLNT 4
 #define BUF_SIZE 120
 #define MAX_CLNT 256
 #define TEST_PORT "5050"
 #define USING_TEST_PORT 1
 
-void ErrorHandling(const char *msg);
+using namespace std;
+
+unsigned WINAPI HandleClnt(void* arg);
+void SendMsg(SOCKET hClntSock, char* msg, int len);
+void ErrorHandling(const char* msg);
 
 typedef struct client_list // 접속 여부를 확인하는 clinet_list
 {
+	int num;
 	char id[25];
 	struct sockaddr_in clnt_adr;
 	bool connect; // is_Connect?
@@ -24,33 +31,35 @@ typedef struct client_list // 접속 여부를 확인하는 clinet_list
 
 typedef struct chat_room
 {
-	int *serv_sock;
+	SOCKET clntSocks[ROOM_MAX_CLNT];
 	int room_number;
-	int port;
-	char name[10];
 }information;
 
 typedef struct room_list
 {
+	HANDLE tid;
 	bool vaild; // Room 오픈 여부
 	char name[25];
-	HANDLE tid;
-	int port;
-	int clnt_cnt;
+	int clntCnt;
 }room_list;
 
 typedef struct DB_Client
 {
-	int *sock_copy;
+	int* sock_copy;
 	struct sockaddr_in clnt_adr;
 	char message[BUF_SIZE];
 }DB_Client;
 
-int main(int argc, char *argv[])
+HANDLE hMutex;
+SOCKET clntSocks[MAX_CLNT];
+int clntCnt = 0;
+
+int main(int argc, char* argv[])
 {
 	WSADATA wsaData;
 	SOCKET hServSock, hClntSock;
 	SOCKADDR_IN servAdr, clntAdr;
+	HANDLE hThread;
 	int clntAdrSz;
 	char message[BUF_SIZE];
 
@@ -68,7 +77,7 @@ int main(int argc, char *argv[])
 		ErrorHandling("WSAStartup() Error!");
 	}
 
-	hServSock = socket(PF_INET,SOCK_STREAM, 0);
+	hServSock = socket(PF_INET, SOCK_STREAM, 0);
 
 	memset(&servAdr, 0, sizeof(servAdr));
 	servAdr.sin_family = AF_INET;
@@ -84,33 +93,78 @@ int main(int argc, char *argv[])
 		ErrorHandling("listen() Error");
 	}
 
+	printf("IT'S RUN!\n");
 	while (1)
 	{
-		printf("IT'S RUN!\n");
 		clntAdrSz = sizeof(clntAdr);
 		int strLen = 0;
 		char clnt_Message[BUF_SIZE];
-		char clnt_Send_Message[BUF_SIZE];
+
+		clntAdrSz = sizeof(clntAdr);
 		hClntSock = accept(hServSock, (SOCKADDR*)&clntAdr, &clntAdrSz);
-		
-		while((strLen = recv(hClntSock, clnt_Message, sizeof(clnt_Message), 0)) != 0)
-		{
-			clnt_Message[strLen-1] = 0;
-			printf("Message From Clinet : %s\n", clnt_Message);
 
-			strcpy(clnt_Message, "유철이 감사하다!");
-			strLen = strlen(clnt_Message);
-			send(hClntSock, clnt_Message, strLen, 0);
-		}
+		WaitForSingleObject(hMutex, INFINITE);
+		clntSocks[clntCnt++] = hClntSock;
+		ReleaseMutex(hMutex);
+
+		hThread = (HANDLE)_beginthreadex(NULL, 0, HandleClnt, (void*)&hClntSock, 0, NULL);
+		printf("CONNECT client IP : %s\n", inet_ntoa(clntAdr.sin_addr));
+
 	}
-
+	closesocket(hServSock);
+	WSACleanup();
+	return 0;
 }
 
-void ErrorHandling(const char *msg)
+unsigned WINAPI HandleClnt(void* arg)
+{
+	SOCKET hClntSock = *((SOCKET*)arg);
+	int strLen = 0, i;
+	char msg[BUF_SIZE];
+
+	while ((strLen = recv(hClntSock, msg, sizeof(msg), 0)) > 0)
+	{
+		msg[strLen] = 0;
+		printf("Logged : %s\n", msg);
+		SendMsg(hClntSock, msg, strLen);
+	}
+
+
+	WaitForSingleObject(hMutex, INFINITE);
+	for (i = 0; i < clntCnt; i++)
+	{
+		if (hClntSock == clntSocks[i])
+		{
+			while (i++ < clntCnt - 1)
+			{
+				clntSocks[i] = clntSocks[i + 1];
+			}
+			break;
+		}
+	}
+	clntCnt--;
+	ReleaseMutex(hMutex);
+	closesocket(hClntSock);
+	return 0;
+
+}
+void SendMsg(SOCKET hClntSock, char* msg, int len)
+{
+	WaitForSingleObject(hMutex, INFINITE);
+	for (int i = 0; i < clntCnt; i++)
+	{
+		if (hClntSock == clntSocks[i])
+		{
+			continue;
+		}
+		send(clntSocks[i], msg, len, 0);
+	}
+	ReleaseMutex(hMutex);
+
+}
+void ErrorHandling(const char* msg)
 {
 	fputs(msg, stderr);
 	fputc('\n', stderr);
 	exit(1);
 }
-
-
