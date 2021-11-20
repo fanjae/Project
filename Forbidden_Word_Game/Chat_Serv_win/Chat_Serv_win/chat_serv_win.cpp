@@ -124,13 +124,13 @@ unsigned WINAPI HandleClnt(void* arg)
 
 	while ((strLen = recv(hClntSock, msg, sizeof(msg), 0)) > 0)
 	{
-		msg[strLen] = 0;
 		printf("Logged : %s\n", msg);
 		SendMsg(hClntSock, msg, strLen);
+		strLen = 0;
+		memset(msg, 0, sizeof(msg));
 	}
 
-	
-	
+		
 	WaitForSingleObject(hMutex, INFINITE);
 	for (i = 0; i < clntCnt; i++)
 	{
@@ -147,7 +147,6 @@ unsigned WINAPI HandleClnt(void* arg)
 	ReleaseMutex(hMutex);
 	closesocket(hClntSock);
 	return 0;
-
 }
 void SendMsg(SOCKET hClntSock, char* msg, int len)
 {
@@ -158,8 +157,6 @@ void SendMsg(SOCKET hClntSock, char* msg, int len)
 		{
 			continue;
 		}
-		printf("cnt : %d\n", message_cnt++);
-		printf("msg : %s\n", msg);
 		send(clntSocks[i], msg, len, 0);
 	}
 	ReleaseMutex(hMutex);

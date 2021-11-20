@@ -110,11 +110,11 @@ int main(int argc, char* argv[])
 unsigned WINAPI SendMsg(void* arg)
 {
 	SOCKET hSock = *((SOCKET*)arg);
-	char sendMsg[BUF_SIZE];
-	char FullMsg[BUF_SIZE];
-	int strLen = 0;
 	while (1)
 	{
+		int strLen = 0;
+		char sendMsg[BUF_SIZE] = { 0 };
+		char FullMsg[BUF_SIZE] = { 0 };
 		fgets(sendMsg, BUF_SIZE, stdin);
 		if (sendMsg[0] == '\n' || sendMsg[0] == ' ')
 		{
@@ -139,7 +139,6 @@ unsigned WINAPI SendMsg(void* arg)
 				break;
 			}
 		}
-
 		send(hSock, FullMsg, strLen, 0);
 	}
 	return 0;
@@ -157,7 +156,8 @@ unsigned WINAPI RecvMsg(void* arg)
 		{
 			return -1;
 		}
-		RecvMsg[strLen] = 0;
+		RecvMsg[strLen] = '\n';
+		RecvMsg[strLen + 1] = 0;
 		fputs(RecvMsg, stdout);
 	}
 	return 0;
@@ -192,5 +192,4 @@ void last_enter_delete(char* message) // fgets 마지막 엔터값을 NULL문자로 변경.
 			break;
 		}
 	}
-	printf("len : %d\n", i);
 }
