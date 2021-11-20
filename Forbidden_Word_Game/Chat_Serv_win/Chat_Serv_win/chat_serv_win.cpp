@@ -10,7 +10,7 @@
 
 #define ROOM_SIZE 5
 #define ROOM_MAX_CLNT 4
-#define BUF_SIZE 120
+#define BUF_SIZE 100
 #define MAX_CLNT 256
 #define TEST_PORT "5050"
 #define USING_TEST_PORT 1
@@ -53,7 +53,7 @@ typedef struct DB_Client
 HANDLE hMutex;
 SOCKET clntSocks[MAX_CLNT];
 int clntCnt = 0;
-
+int message_cnt = 0;
 int main(int argc, char* argv[])
 {
 	WSADATA wsaData;
@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
 	{
 		ErrorHandling("WSAStartup() Error!");
 	}
-
+	hMutex = CreateMutex(NULL, FALSE, NULL);
 	hServSock = socket(PF_INET, SOCK_STREAM, 0);
 
 	memset(&servAdr, 0, sizeof(servAdr));
@@ -129,7 +129,8 @@ unsigned WINAPI HandleClnt(void* arg)
 		SendMsg(hClntSock, msg, strLen);
 	}
 
-
+	
+	
 	WaitForSingleObject(hMutex, INFINITE);
 	for (i = 0; i < clntCnt; i++)
 	{
@@ -157,6 +158,8 @@ void SendMsg(SOCKET hClntSock, char* msg, int len)
 		{
 			continue;
 		}
+		printf("cnt : %d\n", message_cnt++);
+		printf("msg : %s\n", msg);
 		send(clntSocks[i], msg, len, 0);
 	}
 	ReleaseMutex(hMutex);

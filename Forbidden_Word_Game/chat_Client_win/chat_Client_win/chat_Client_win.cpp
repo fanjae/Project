@@ -4,9 +4,9 @@
 #include <windows.h>
 #include <process.h>
 
-#define BUF_SIZE 1024
+#define BUF_SIZE 100
 #define TEST_MODE 1
-#define TEST_IP "127.0.0.1"
+#define TEST_IP "183.101.168.117"
 #define TEST_PORT "5050"
 
 #pragma warning (disable:4996)
@@ -32,11 +32,13 @@ int main(int argc, char* argv[])
 	while (1)
 	{
 		char menu_input;
+		printf("==================================\n");
 		printf("Server 테스트용 Client\n");
 		printf("1.채팅 서버 접속\n");
 		printf("2.ID 입력\n");
 		printf("3.Credits\n");
 		printf("4.종료\n");
+		printf("==================================\n");
 		printf("숫자를 입력하고 엔터키를 누르세요.\n");
 		scanf(" %1c", &menu_input);
 
@@ -109,11 +111,15 @@ unsigned WINAPI SendMsg(void* arg)
 {
 	SOCKET hSock = *((SOCKET*)arg);
 	char sendMsg[BUF_SIZE];
-	char FullMsg[BUF_SIZE * 2];
+	char FullMsg[BUF_SIZE];
 	int strLen = 0;
 	while (1)
 	{
 		fgets(sendMsg, BUF_SIZE, stdin);
+		if (sendMsg[0] == '\n' || sendMsg[0] == ' ')
+		{
+			continue;
+		}
 		if (!strcmp(sendMsg, "q\n") || !strcmp(sendMsg, "Q\n"))
 		{
 			closesocket(hSock);
@@ -143,18 +149,18 @@ unsigned WINAPI RecvMsg(void* arg)
 {
 	SOCKET hSock = *((SOCKET*)arg);
 	int strLen = 0;
-	char RecvMsg[BUF_SIZE * 2];
+	char RecvMsg[BUF_SIZE];
 	while (1)
 	{
-		strLen = recv(hSock, RecvMsg, BUF_SIZE, 0);
+		strLen = recv(hSock, RecvMsg, BUF_SIZE * 2, 0);
 		if (strLen == -1)
 		{
 			return -1;
 		}
-		strLen = strlen(RecvMsg);
 		RecvMsg[strLen] = 0;
-		printf("Data : %s\n", RecvMsg);
+		fputs(RecvMsg, stdout);
 	}
+	return 0;
 }
 void ErrorHandling(const char* message) // ErrorHandling Function 
 {
@@ -165,6 +171,7 @@ void ErrorHandling(const char* message) // ErrorHandling Function
 void Set_ID_Name()
 {
 	char buffer[BUF_SIZE];
+	printf("==================================\n");
 	printf("ID를 입력하세요 : ");
 	getchar();
 	fgets(buffer, BUF_SIZE, stdin);
@@ -172,10 +179,12 @@ void Set_ID_Name()
 	strcpy(ID, buffer);
 
 	printf("ID 셋팅이 완료 되었습니다.\n");
+
 }
 void last_enter_delete(char* message) // fgets 마지막 엔터값을 NULL문자로 변경.
 {
-	for (int i = 0; ; i++)
+	int i;
+	for (i = 0; ; i++)
 	{
 		if (message[i] == '\n')
 		{
@@ -183,4 +192,5 @@ void last_enter_delete(char* message) // fgets 마지막 엔터값을 NULL문자로 변경.
 			break;
 		}
 	}
+	printf("len : %d\n", i);
 }
