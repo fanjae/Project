@@ -100,7 +100,9 @@ int main(int argc, char* argv[])
 
 		WaitForSingleObject(hMutex, INFINITE);
 		//clntSocks[clntCnt++] = hClntSock;
-		Client_Information[clntCnt++].clntSocks = hClntSock;
+		Client_Information[clntCnt].clntSocks = hClntSock;
+		Client_Information[clntCnt].Room_number = 0;
+		clntCnt++;
 		ReleaseMutex(hMutex);
 	
 		hThread = (HANDLE)_beginthreadex(NULL, 0, HandleClnt, (void*)&hClntSock, 0, NULL);
@@ -122,13 +124,14 @@ unsigned WINAPI HandleClnt(void* arg)
 	{
 		strLen = recv(hClntSock, msg, sizeof(msg), 0);
 		strncpy(sub_msg, msg, 6);
-		sub_msg[6] = 0;
+		sub_msg[6] = 0;;
 		if (strcmp(sub_msg, "0xRoom") == 0)
 		{
 			WaitForSingleObject(hMutex, INFINITE);
 			for (int i = 0; i < ROOM_SIZE; i++)
 			{
 				sprintf(msg, "%d%d%d", room[i].room_number, room[i].vaild, room[i].clntCnt);
+				printf("%s\n", msg);
 				send(hClntSock, msg, 4, 0);
 				msg[0] = '\0';
 			}
@@ -165,7 +168,12 @@ unsigned WINAPI HandleClnt(void* arg)
 						break;
 					}
 				}
+				for (int i = 0; i < ROOM_SIZE; i++)
+				{
+					printf("%d\n", room[i].clntCnt);
+				}
 				ReleaseMutex(hMutex);
+						
 				while ((strLen = recv(hClntSock, msg, sizeof(msg), 0)) > 0)
 				{
 					msg[strLen] = 0;
@@ -177,11 +185,12 @@ unsigned WINAPI HandleClnt(void* arg)
 				WaitForSingleObject(hMutex, INFINITE);
 				for (i = 0; i < clntCnt; i++)
 				{
-					if (hClntSock == clntSocks[i])
+					if (hClntSock == Client_Information[i].clntSocks)
 					{
 						while (i++ < clntCnt - 1)
 						{
-							clntSocks[i] = clntSocks[i + 1];
+							Client_Information[i].clntSocks = Client_Information[i + 1].clntSocks;
+							Client_Information[i].Room_number = Client_Information[i + 1].Room_number;
 							break;
 						}
 					}

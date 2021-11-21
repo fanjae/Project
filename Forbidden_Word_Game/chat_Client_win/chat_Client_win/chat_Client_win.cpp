@@ -31,11 +31,6 @@ int main(int argc, char* argv[])
 	char message[BUF_SIZE];
 	int strLen;
 
-	if (TEST_MODE == 1)
-	{
-		strcpy(ID, "TEST");
-	}
-
 	while (1)
 	{
 		char menu_input;
@@ -279,7 +274,6 @@ void Set_ID_Name()
 	{
 		printf("==================================\n");
 		printf("ID를 입력하세요(한글 8자 이내, 영문 15자 이내) : ");
-		getchar();
 		fgets(buffer, BUF_SIZE, stdin);
 		last_enter_delete(buffer);
 		strcpy(ID, buffer);
