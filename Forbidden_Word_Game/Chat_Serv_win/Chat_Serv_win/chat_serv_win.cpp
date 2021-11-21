@@ -18,16 +18,9 @@
 using namespace std;
 
 unsigned WINAPI HandleClnt(void* arg);
-void SendMsg(SOCKET hClntSock, char* msg, int len);
+void SendMsg(SOCKET hClntSock, int RoomNumber, char *msg, int len);
 void ErrorHandling(const char* msg);
 void Init();
-typedef struct client_list // 접속 여부를 확인하는 clinet_list
-{
-	int num;
-	char id[25];
-	struct sockaddr_in clnt_adr;
-	bool connect; // is_Connect?
-}client_list;
 
 typedef struct room_list
 {
@@ -43,7 +36,14 @@ typedef struct DB_Client
 	char message[BUF_SIZE];
 }DB_Client;
 
+typedef struct client_list // client 정보를 확인하는 list
+{
+	SOCKET clntSocks;
+	int Room_number;
+}client_list;
+
 HANDLE hMutex;
+client_list Client_Information[MAX_CLNT];
 SOCKET clntSocks[MAX_CLNT];
 room_list room[ROOM_SIZE];
 int clntCnt = 0;
@@ -99,7 +99,8 @@ int main(int argc, char* argv[])
 		hClntSock = accept(hServSock, (SOCKADDR*)&clntAdr, &clntAdrSz);
 
 		WaitForSingleObject(hMutex, INFINITE);
-		clntSocks[clntCnt++] = hClntSock;
+		//clntSocks[clntCnt++] = hClntSock;
+		Client_Information[clntCnt++].clntSocks = hClntSock;
 		ReleaseMutex(hMutex);
 	
 		hThread = (HANDLE)_beginthreadex(NULL, 0, HandleClnt, (void*)&hClntSock, 0, NULL);
@@ -135,24 +136,62 @@ unsigned WINAPI HandleClnt(void* arg)
 		}
 		else if (strcmp(sub_msg, "0xJoin") == 0)
 		{
-			int RoomIndex = (msg[6] - '0');
+			int RoomIndex = (msg[6] - '0') -1;
 
 			WaitForSingleObject(hMutex, INFINITE);
 			if (room[RoomIndex].clntCnt == MAX_CLNT)
 			{
 				strcpy(msg, "0xisFull");
+				send(hClntSock, msg, 9, 0);
+				ReleaseMutex(hMutex);
 
 			}
 			else if (room[RoomIndex].vaild == 1)
 			{
 				strcpy(msg, "0xGStart");
+				send(hClntSock, msg, 9, 0);
+				ReleaseMutex(hMutex);
 			}
 			else
 			{
-				sprintf(msg, "0xGRoom%d",RoomIndex);
+				strcpy(msg, "0xLogin!");
+				send(hClntSock, msg, 9, 0);
+				for (int i = 0; i < MAX_CLNT; i++)
+				{
+					if (hClntSock == Client_Information[i].clntSocks)
+					{
+						Client_Information[i].Room_number = RoomIndex;
+						room[RoomIndex].clntCnt++;
+						break;
+					}
+				}
+				ReleaseMutex(hMutex);
+				while ((strLen = recv(hClntSock, msg, sizeof(msg), 0)) > 0)
+				{
+					msg[strLen] = 0;
+					printf("[Room %d] : Logged : %s\n", RoomIndex+1, msg);
+					SendMsg(hClntSock, RoomIndex, msg, strLen);
+					strLen = 0;
+				}
+
+				WaitForSingleObject(hMutex, INFINITE);
+				for (i = 0; i < clntCnt; i++)
+				{
+					if (hClntSock == clntSocks[i])
+					{
+						while (i++ < clntCnt - 1)
+						{
+							clntSocks[i] = clntSocks[i + 1];
+							break;
+						}
+					}
+				}
+				clntCnt--;
+				ReleaseMutex(hMutex);
+				closesocket(hClntSock);
+				
+
 			}
-			send(hClntSock, msg, 9, 0);
-			ReleaseMutex(hMutex);
 		}
 	}
 
@@ -174,13 +213,14 @@ unsigned WINAPI HandleClnt(void* arg)
 			while (i++ < clntCnt - 1)
 			{
 				clntSocks[i] = clntSocks[i + 1];
+
 			}
 			break;
 		}
 	}
 	clntCnt--;
-	ReleaseMutex(hMutex);*/
-	closesocket(hClntSock);
+	ReleaseMutex(hMutex);
+	closesocket(hClntSock); */
 	return 0;
 }
 /*
@@ -232,6 +272,22 @@ void SendMsg(SOCKET hClntSock, char* msg, int len)
 }
 */
 
+void SendMsg(SOCKET hClntSock, int RoomNumber, char *msg, int len)
+{
+	WaitForSingleObject(hMutex, INFINITE);
+	for (int i = 0; i < clntCnt; i++)
+	{
+		if (hClntSock == Client_Information[i].clntSocks)
+		{
+			continue;
+		}
+		if (Client_Information[i].Room_number == RoomNumber)
+		{
+			send(Client_Information[i].clntSocks, msg, len, 0);
+		}
+	}
+	ReleaseMutex(hMutex);
+}
 void ErrorHandling(const char* msg)
 {
 	fputs(msg, stderr);

@@ -15,8 +15,8 @@
 #pragma comment (lib,"ws2_32.lib")
 
 unsigned WINAPI JoinRoom(void * arg);
-unsigned WINAPI SendMsg(void* arg);
-unsigned WINAPI RecvMsg(void* arg);
+unsigned WINAPI Send_Message(void* arg);
+unsigned WINAPI Recv_Message(void* arg);
 void ErrorHandling(const char* message);
 void Set_ID_Name();
 void last_enter_delete(char* data);
@@ -169,7 +169,6 @@ unsigned WINAPI JoinRoom(void *arg) // 방 정보 확인
 		if (room_input >= '1' && room_input <= '5')
 		{
 			sprintf(SendMsg, "0xJoin%c", room_input);
-			printf("SendMsg : %s\n", SendMsg);
 			send(hSocket, SendMsg, 8, 0);
 			
 			recv(hSocket, RecvMsg, 9, 0);
@@ -184,18 +183,16 @@ unsigned WINAPI JoinRoom(void *arg) // 방 정보 확인
 				printf("게임이 시작되어 입장이 불가능합니다.\n");
 				continue;
 			}
-			else
+			else if (strcmp(RecvMsg, "0xLogin!") == 0)
 			{
 				printf("%c번방에 접속하였습니다.\n", room_input);
 				printf("========================\n");
 				
-				hSndThread = (HANDLE)_beginthreadex(NULL, 0, (_beginthreadex_proc_type)SendMsg, (void*)&hSocket, 0, NULL);
-				hRcvThread = (HANDLE)_beginthreadex(NULL, 0, (_beginthreadex_proc_type)RecvMsg, (void*)&hSocket, 0, NULL);
+				hSndThread = (HANDLE)_beginthreadex(NULL, 0, Send_Message, (void*)&hSocket, 0, NULL);
+				hRcvThread = (HANDLE)_beginthreadex(NULL, 0, Recv_Message, (void*)&hSocket, 0, NULL);
 
 				WaitForSingleObject(hSndThread, INFINITE);
 				WaitForSingleObject(hRcvThread, INFINITE);
-
-				
 			}
 
 		}
@@ -213,8 +210,7 @@ unsigned WINAPI JoinRoom(void *arg) // 방 정보 확인
 	return 0;
 }
 
-
-unsigned WINAPI SendMsg(void* arg)
+unsigned WINAPI Send_Message(void* arg)
 {
 	SOCKET hSock = *((SOCKET*)arg);
 	while (1)
@@ -251,7 +247,7 @@ unsigned WINAPI SendMsg(void* arg)
 	return 0;
 }
 
-unsigned WINAPI RecvMsg(void* arg)
+unsigned WINAPI Recv_Message(void* arg)
 {
 	SOCKET hSock = *((SOCKET*)arg);
 	int strLen = 0;
