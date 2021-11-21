@@ -20,7 +20,7 @@ using namespace std;
 unsigned WINAPI HandleClnt(void* arg);
 void SendMsg(SOCKET hClntSock, char* msg, int len);
 void ErrorHandling(const char* msg);
-
+void Init();
 typedef struct client_list // 접속 여부를 확인하는 clinet_list
 {
 	int num;
@@ -29,18 +29,11 @@ typedef struct client_list // 접속 여부를 확인하는 clinet_list
 	bool connect; // is_Connect?
 }client_list;
 
-typedef struct chat_room
-{
-	SOCKET clntSocks[ROOM_MAX_CLNT];
-	int room_number;
-}information;
-
 typedef struct room_list
 {
-	HANDLE tid;
-	bool vaild; // Room 오픈 여부
-	char name[25];
-	int clntCnt;
+	int room_number; // 방 번호
+	int vaild; // Room 오픈 여부
+	int clntCnt; // 해당 방에 접속한 인원 수
 }room_list;
 
 typedef struct DB_Client
@@ -52,8 +45,9 @@ typedef struct DB_Client
 
 HANDLE hMutex;
 SOCKET clntSocks[MAX_CLNT];
+room_list room[ROOM_SIZE];
 int clntCnt = 0;
-int message_cnt = 0;
+
 int main(int argc, char* argv[])
 {
 	WSADATA wsaData;
@@ -93,6 +87,7 @@ int main(int argc, char* argv[])
 		ErrorHandling("listen() Error");
 	}
 
+	Init();
 	printf("IT'S RUN!\n");
 	while (1)
 	{
@@ -106,10 +101,10 @@ int main(int argc, char* argv[])
 		WaitForSingleObject(hMutex, INFINITE);
 		clntSocks[clntCnt++] = hClntSock;
 		ReleaseMutex(hMutex);
-
+	
 		hThread = (HANDLE)_beginthreadex(NULL, 0, HandleClnt, (void*)&hClntSock, 0, NULL);
 		printf("CONNECT client IP : %s\n", inet_ntoa(clntAdr.sin_addr));
-
+		
 	}
 	closesocket(hServSock);
 	WSACleanup();
@@ -119,9 +114,81 @@ int main(int argc, char* argv[])
 unsigned WINAPI HandleClnt(void* arg)
 {
 	SOCKET hClntSock = *((SOCKET*)arg);
+	int i, strLen = 0;
+	char msg[BUF_SIZE];
+	char sub_msg[BUF_SIZE];
+	while (1)
+	{
+		strLen = recv(hClntSock, msg, sizeof(msg), 0);
+		strncpy(sub_msg, msg, 6);
+		sub_msg[6] = 0;
+		if (strcmp(sub_msg, "0xRoom") == 0)
+		{
+			WaitForSingleObject(hMutex, INFINITE);
+			for (int i = 0; i < ROOM_SIZE; i++)
+			{
+				sprintf(msg, "%d%d%d", room[i].room_number, room[i].vaild, room[i].clntCnt);
+				send(hClntSock, msg, 4, 0);
+				msg[0] = '\0';
+			}
+			ReleaseMutex(hMutex);
+		}
+		else if (strcmp(sub_msg, "0xJoin") == 0)
+		{
+			int RoomIndex = (msg[6] - '0');
+
+			WaitForSingleObject(hMutex, INFINITE);
+			if (room[RoomIndex].clntCnt == MAX_CLNT)
+			{
+				strcpy(msg, "0xisFull");
+
+			}
+			else if (room[RoomIndex].vaild == 1)
+			{
+				strcpy(msg, "0xGStart");
+			}
+			else
+			{
+				sprintf(msg, "0xGRoom%d",RoomIndex);
+			}
+			send(hClntSock, msg, 9, 0);
+			ReleaseMutex(hMutex);
+		}
+	}
+
+	/*
+	while ((strLen = recv(hClntSock, msg, sizeof(msg), 0)) > 0)
+	{
+		printf("Logged : %s\n", msg);
+		SendMsg(hClntSock, msg, strLen);
+		strLen = 0;
+		memset(msg, 0, sizeof(msg));
+	}
+
+
+	WaitForSingleObject(hMutex, INFINITE);
+	for (i = 0; i < clntCnt; i++)
+	{
+		if (hClntSock == clntSocks[i])
+		{
+			while (i++ < clntCnt - 1)
+			{
+				clntSocks[i] = clntSocks[i + 1];
+			}
+			break;
+		}
+	}
+	clntCnt--;
+	ReleaseMutex(hMutex);*/
+	closesocket(hClntSock);
+	return 0;
+}
+/*
+unsigned WINAPI HandleClnt(void* arg)
+{
+	SOCKET hClntSock = *((SOCKET*)arg);
 	int strLen = 0, i;
 	char msg[BUF_SIZE];
-
 	while ((strLen = recv(hClntSock, msg, sizeof(msg), 0)) > 0)
 	{
 		printf("Logged : %s\n", msg);
@@ -147,7 +214,9 @@ unsigned WINAPI HandleClnt(void* arg)
 	ReleaseMutex(hMutex);
 	closesocket(hClntSock);
 	return 0;
-}
+}*/
+
+/*
 void SendMsg(SOCKET hClntSock, char* msg, int len)
 {
 	WaitForSingleObject(hMutex, INFINITE);
@@ -160,11 +229,24 @@ void SendMsg(SOCKET hClntSock, char* msg, int len)
 		send(clntSocks[i], msg, len, 0);
 	}
 	ReleaseMutex(hMutex);
-
 }
+*/
+
 void ErrorHandling(const char* msg)
 {
 	fputs(msg, stderr);
 	fputc('\n', stderr);
 	exit(1);
+}
+
+void Init()
+{
+	// 방 초기화
+	for(int i=0; i<ROOM_SIZE; i++)
+	{
+		room[i].room_number = i + 1;
+		room[i].vaild = 0;
+		room[i].clntCnt = 0; 
+	}
+	
 }
