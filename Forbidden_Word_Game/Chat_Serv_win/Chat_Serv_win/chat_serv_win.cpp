@@ -29,7 +29,8 @@ typedef struct room_list
 	int clntCnt; // 해당 방에 접속한 인원 수
 }room_list;
 
-typedef struct DB_Client
+// now unsued struct
+typedef struct DB_Client 
 {
 	int* sock_copy;
 	struct sockaddr_in clnt_adr;
@@ -142,9 +143,10 @@ unsigned WINAPI HandleClnt(void* arg)
 			int RoomIndex = (msg[6] - '0') -1;
 
 			WaitForSingleObject(hMutex, INFINITE);
-			if (room[RoomIndex].clntCnt == MAX_CLNT)
+			if (room[RoomIndex].clntCnt >= ROOM_MAX_CLNT)
 			{
 				strcpy(msg, "0xisFull");
+				printf("%s\n", msg);
 				send(hClntSock, msg, 9, 0);
 				ReleaseMutex(hMutex);
 
@@ -165,6 +167,10 @@ unsigned WINAPI HandleClnt(void* arg)
 					{
 						Client_Information[i].Room_number = RoomIndex;
 						room[RoomIndex].clntCnt++;
+						if (room[RoomIndex].clntCnt >= ROOM_MAX_CLNT)
+						{
+							room[RoomIndex].vaild = 2;
+						}
 						break;
 					}
 				}

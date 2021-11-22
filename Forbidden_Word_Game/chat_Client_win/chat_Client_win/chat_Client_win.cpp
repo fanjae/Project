@@ -20,6 +20,10 @@ unsigned WINAPI Recv_Message(void* arg);
 void ErrorHandling(const char* message);
 void Set_ID_Name();
 void last_enter_delete(char* data);
+void gotoxy_input(int x, int y); // now unused
+void gotoxy_output(int x, int y); // now unused
+void Init();
+int Command(char *msg);
 char ID[BUF_SIZE];
 
 int main(int argc, char* argv[])
@@ -31,6 +35,7 @@ int main(int argc, char* argv[])
 	char message[BUF_SIZE];
 	int strLen;
 
+	Init();
 	while (1)
 	{
 		char menu_input;
@@ -167,7 +172,6 @@ unsigned WINAPI JoinRoom(void *arg) // 방 정보 확인
 			send(hSocket, SendMsg, 8, 0);
 			
 			recv(hSocket, RecvMsg, 9, 0);
-			printf("%s\n", RecvMsg);
 			if (strcmp(RecvMsg, "0xisFull") == 0)
 			{
 				printf("정원이 가득찼습니다.\n");
@@ -180,8 +184,13 @@ unsigned WINAPI JoinRoom(void *arg) // 방 정보 확인
 			}
 			else if (strcmp(RecvMsg, "0xLogin!") == 0)
 			{
+				system("cls");
+				gotoxy_output(0, 0);
+				gotoxy_input(5, 24);
 				printf("%c번방에 접속하였습니다.\n", room_input);
 				printf("========================\n");
+				
+				
 				
 				hSndThread = (HANDLE)_beginthreadex(NULL, 0, Send_Message, (void*)&hSocket, 0, NULL);
 				hRcvThread = (HANDLE)_beginthreadex(NULL, 0, Recv_Message, (void*)&hSocket, 0, NULL);
@@ -211,9 +220,18 @@ unsigned WINAPI Send_Message(void* arg)
 	while (1)
 	{
 		int strLen = 0;
+		int Command_value;
 		char sendMsg[BUF_SIZE] = { 0 };
 		char FullMsg[BUF_SIZE] = { 0 };
 		fgets(sendMsg, BUF_SIZE, stdin);
+		if (sendMsg[0] == '/')
+		{
+			Command_value = Command(sendMsg);
+			if (Command_value == 0)
+			{
+				continue;
+			}
+		}
 		if (sendMsg[0] == '\n' || sendMsg[0] == ' ')
 		{
 			continue;
@@ -302,4 +320,41 @@ void last_enter_delete(char* message) // fgets 마지막 엔터값을 NULL문자로 변경.
 			break;
 		}
 	}
+}
+void gotoxy_input(int x, int y)
+{
+	COORD Pos;
+	Pos.X = x;
+	Pos.Y = y;
+	SetConsoleCursorPosition(GetStdHandle(STD_INPUT_HANDLE), Pos);
+}
+void gotoxy_output(int x, int y)
+{
+	COORD Pos;
+	Pos.X = x;
+	Pos.Y = y;
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), Pos);
+}
+void Init()
+{
+	SetConsoleTitle("Forbidden_Word_Game");
+}
+
+int Command(char *msg)
+{
+	if (strcmp(msg, "/start") == 0)
+	{
+		return 1;
+	}
+	else if (strcmp(msg, "/help") == 0)
+	{
+		printf("================명령어 모음================\n");
+		printf("=============/help : 도움말================\n");
+		printf("=============/start : 게임시작=============\n");
+	}
+	else
+	{
+		fputs("존재하지 않는 명령어입니다. /help로 유효한 명령어를 확인하세요.\n", stdout);
+	}
+	return 0;
 }
