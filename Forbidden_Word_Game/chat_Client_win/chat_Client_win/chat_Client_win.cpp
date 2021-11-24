@@ -92,6 +92,7 @@ int main(int argc, char* argv[])
 			else
 			{
 				puts("채팅서버에 접속하였습니다.");
+				send(hSocket, ID, strlen(ID), 0);
 			}
 
 			hJoinThread = (HANDLE)_beginthreadex(NULL, 0, JoinRoom, (void*)&hSocket, 0, NULL);
@@ -190,8 +191,6 @@ unsigned WINAPI JoinRoom(void *arg) // 방 정보 확인
 				printf("%c번방에 접속하였습니다.\n", room_input);
 				printf("========================\n");
 				
-				
-				
 				hSndThread = (HANDLE)_beginthreadex(NULL, 0, Send_Message, (void*)&hSocket, 0, NULL);
 				hRcvThread = (HANDLE)_beginthreadex(NULL, 0, Recv_Message, (void*)&hSocket, 0, NULL);
 
@@ -226,6 +225,7 @@ unsigned WINAPI Send_Message(void* arg)
 		fgets(sendMsg, BUF_SIZE, stdin);
 		if (sendMsg[0] == '/')
 		{
+			last_enter_delete(sendMsg);
 			Command_value = Command(sendMsg);
 			if (Command_value == 0)
 			{
@@ -346,11 +346,17 @@ int Command(char *msg)
 	{
 		return 1;
 	}
+	else if (strcmp(msg, "/go") == 0)
+	{
+		return 2;
+	}
 	else if (strcmp(msg, "/help") == 0)
 	{
-		printf("================명령어 모음================\n");
-		printf("=============/help : 도움말================\n");
-		printf("=============/start : 게임시작=============\n");
+		printf("================명령어 리스트================\n");
+		printf("/help : 도움말\n");
+		printf("/start : 게임시작\n");
+		printf("/go : 게임시작 동의===========\n");
+		printf("================명령어 리스트================\n");
 	}
 	else
 	{
